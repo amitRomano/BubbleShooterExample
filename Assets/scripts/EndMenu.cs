@@ -14,10 +14,21 @@ public class EndMenu : MonoBehaviour {
 
     string playerName;
 
-
     void Start ()
     {
         gameObject.SetActive(false);
+    }
+    public void toggleEndMenuOff()
+    {
+        gameObject.SetActive(false);
+    }
+    public void toggleEndMenuOn(int score)
+    {
+        setEndScore(score);
+        if (isTopTen(score)) showHighScoreMenu();
+        else showNotHighScoreMenu();
+        
+        this.gameObject.SetActive(true);
     }
 
     public void saveHighScore()
@@ -28,13 +39,11 @@ public class EndMenu : MonoBehaviour {
        setHighScoreInRank(gameController.getCurrentScore(), rank, playerName);
        scoreBoard.GetComponent<ScoreBoard>().refreshScoreBoard();
 
-        scoreBoard.SetActive(true);
+       scoreBoard.SetActive(true);
        this.gameObject.SetActive(false);
     }
-
-   private int findRank(int score)
+    private int findRank(int score)
    {
-       int[] scores = new int[10];
        int i = 0;
        while (score < PlayerPrefs.GetInt("highScore" + i, 0))
        {
@@ -42,34 +51,22 @@ public class EndMenu : MonoBehaviour {
        }
        return i;
    }
-
-   private static void dropAllLinesUnderRankOneDown(int rank)
+    private void dropAllLinesUnderRankOneDown(int rank)
    {
        for (int i = 8; i >= rank; i--)
        {
            dropOneLine(i);
        }
    }
-
-   private void setHighScoreInRank(int score, int rank, string newName)
+    private void setHighScoreInRank(int score, int rank, string newName)
    {
         PlayerPrefs.SetString("highScoreName" + rank.ToString(), newName);
         PlayerPrefs.SetInt("highScore" + rank.ToString(), score);
    }
-
-   private static void dropOneLine(int i)
-   {
-       PlayerPrefs.SetString("highScoreName" + (i + 1).ToString(), PlayerPrefs.GetString("highScoreName" + i.ToString(), ""));
-       PlayerPrefs.SetInt("highScore" + (i + 1).ToString(), PlayerPrefs.GetInt("highScore" + i.ToString(), 0));
-   }
-
-    public void toggleEndMenuOn(int score)
+    private void dropOneLine(int i)
     {
-        setEndScore(score);
-        if (isTopTen(score)) showHighScoreMenu();
-        else showNotHighScoreMenu();
-        
-        this.gameObject.SetActive(true);
+        PlayerPrefs.SetString("highScoreName" + (i + 1).ToString(), PlayerPrefs.GetString("highScoreName" + i.ToString(), ""));
+        PlayerPrefs.SetInt("highScore" + (i + 1).ToString(), PlayerPrefs.GetInt("highScore" + i.ToString(), 0));
     }
 
     private void showNotHighScoreMenu()
@@ -77,28 +74,17 @@ public class EndMenu : MonoBehaviour {
         newHighScore.gameObject.SetActive(false);
         notHighScoreButtons.gameObject.SetActive(true);
     }
-
     private void showHighScoreMenu()
     {
         notHighScoreButtons.gameObject.SetActive(false);
         newHighScore.gameObject.SetActive(true);
     }
-
-    private static bool isTopTen(int score)
+    private bool isTopTen(int score)
     {
         return (score >= PlayerPrefs.GetInt("highScore" + 9.ToString(), 1));
-    }
-
-    public void toggleEndMenuOff()
-    {
-        gameObject.SetActive(false);
     }
     public void setEndScore(int score)
     {
         endScore.text = score.ToString();
     }
-	// Update is called once per frame
-	void Update () {
-		
-	}
 }

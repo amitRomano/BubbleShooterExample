@@ -291,6 +291,7 @@
     <Compile Include="Assets\scripts\GameController.cs" />
     <Compile Include="Assets\scripts\HexGrid.cs" />
     <Compile Include="Assets\scripts\LevelManager.cs" />
+    <Compile Include="Assets\scripts\LineIndicator.cs" />
     <Compile Include="Assets\scripts\MenuController.cs" />
     <Compile Include="Assets\scripts\MobileInput.cs" />
     <Compile Include="Assets\scripts\MonoSingleton.cs" />

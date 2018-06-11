@@ -25,7 +25,6 @@ public class BubbleCannon : MonoBehaviour {
     public GameObject nextBubblePreview;
     public GameObject bubblesUntillNewLineIndicator;
 
-    BubbleNode.Color lastShotColor;
     BubbleNode.Color currentShotColor;
     BubbleNode.Color nextShotColor;
 
@@ -37,13 +36,6 @@ public class BubbleCannon : MonoBehaviour {
         rigidbody = GetComponent<Rigidbody2D>();
         startPos = transform.position;
     }
-
-
-    void Update ()
-    {
-
-    }
-
 
     private int getAmountOfBubbles()
     {
@@ -63,7 +55,6 @@ public class BubbleCannon : MonoBehaviour {
             aimPreview(swipeDelta);
             if (MobileInput.Instance.release)
             {
-                lastShotColor = currentShotColor;
                 sendBubbleInDirection(swipeDelta.normalized);
                     shotPreview.gameObject.SetActive(false);
             }
@@ -83,52 +74,50 @@ public class BubbleCannon : MonoBehaviour {
         resetShot();
         resetShot();
     }
-
-    private void updateShotColorIndicators()
-    {
-        setColor(currentShotColor, this.gameObject, bubbleColors);
-        setColor(currentShotColor, shotPreview, shotPreviewColors);
-    }
-
-    private void updateNextShotColorIndicators()
-    {
-        setColor(nextShotColor, nextBubbleIndicator, bubbleColors);
-    }
-
-    private void aimPreview(Vector3 swipeDelta)
-    {
-        shotPreview.transform.parent.up = swipeDelta.normalized;
-        shotPreview.gameObject.SetActive(true);
-    }
-
-    private static bool isAimedTwardsBubbles(Vector3 swipeDelta)
-    {
-        return swipeDelta.normalized.y < 0.3;
-    }
-
-    private void createBubbleAndMoveToNextShot(HexGrid.PosInGrid bubbleBeenHitPos)
-    {
-        grid.createBubble(bubbleBeenHitPos, currentShotColor, true);
-        resetShot();
-        HexGrid.bubbleShotColor = lastShotColor;
-        resetPosAndVelocity();
-    }
-
-    private bool bubbleHitIsTopCollider(HexGrid.PosInGrid bubbleBeenHitPos)
-    {
-        return bubbleBeenHitPos.y == grid.getFirstLineY() + 1;
-    }
-
     private void resetPosAndVelocity()
     {
         rigidbody.velocity = Vector3.zero;
         transform.position = startPos;
     }
 
+    public void updateShotScale(float scale)
+    {
+        this.transform.localScale = this.transform.localScale * scale;
+    }
+    private void updateShotColorIndicators()
+    {
+        setColor(currentShotColor, this.gameObject, bubbleColors);
+        setColor(currentShotColor, shotPreview, shotPreviewColors);
+    }
+    private void updateNextShotColorIndicators()
+    {
+        setColor(nextShotColor, nextBubbleIndicator, bubbleColors);
+    }
+    private void aimPreview(Vector3 swipeDelta)
+    {
+        shotPreview.transform.parent.up = swipeDelta.normalized;
+        shotPreview.gameObject.SetActive(true);
+    }
+    private bool isAimedTwardsBubbles(Vector3 swipeDelta)
+    {
+        return swipeDelta.normalized.y < 0.3;
+    }
     private void sendBubbleInDirection(Vector3 diraction)
     {
         GameController.isBubbleMidShot = true;
         rigidbody.velocity = diraction * speed;
+    }
+
+    private void createBubbleAndMoveToNextShot(HexGrid.PosInGrid bubbleBeenHitPos)
+    {
+        grid.createBubble(bubbleBeenHitPos, currentShotColor, true);
+        resetShot();
+        resetPosAndVelocity();
+    }
+
+    private bool bubbleHitIsTopCollider(HexGrid.PosInGrid bubbleBeenHitPos)
+    {
+        return bubbleBeenHitPos.y == grid.getFirstLineY() + 1;
     }
 
     public void setColor(BubbleNode.Color color, GameObject bubble, Sprite[] colorSprites)
@@ -147,10 +136,6 @@ public class BubbleCannon : MonoBehaviour {
         }
     }
 
-    public void updateShotScale(float scale)
-    {
-        this.transform.localScale = this.transform.localScale * scale;
-    }
 
     private void OnTriggerEnter2D(Collider2D collision)
     {

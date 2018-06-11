@@ -399,8 +399,8 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 820658883}
-        m_MethodName: restart
+      - m_Target: {fileID: 1314276228}
+        m_MethodName: poptest
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -1963,8 +1963,20 @@ Prefab:
     - target: {fileID: 114549797520574230, guid: 8434bab3d7fbe8e4e9bdab3bff73b6f9,
         type: 2}
       propertyPath: objectsPerRow
-      value: 6
+      value: 9
       objectReference: {fileID: 0}
+    - target: {fileID: 114549797520574230, guid: 8434bab3d7fbe8e4e9bdab3bff73b6f9,
+        type: 2}
+      propertyPath: dropLineIndicator
+      value: 
+      objectReference: {fileID: 1690363164065922, guid: fb838ef9ef23fe44b98c015dd430fb59,
+        type: 2}
+    - target: {fileID: 114549797520574230, guid: 8434bab3d7fbe8e4e9bdab3bff73b6f9,
+        type: 2}
+      propertyPath: dropLineIndicatorPrefeb
+      value: 
+      objectReference: {fileID: 1690363164065922, guid: fb838ef9ef23fe44b98c015dd430fb59,
+        type: 2}
     m_RemovedComponents: []
   m_ParentPrefab: {fileID: 100100000, guid: 8434bab3d7fbe8e4e9bdab3bff73b6f9, type: 2}
   m_IsPrefabParent: 0
@@ -2713,11 +2725,13 @@ MonoBehaviour:
   - {fileID: 21300000, guid: 6fed39c91ac757140b67c3a4531e8b77, type: 3}
   - {fileID: 21300000, guid: 1a3535838f13fbd49b06fd0a7b466252, type: 3}
   - {fileID: 21300000, guid: da907394dd78ee5499b37be2804eeef7, type: 3}
-  numOfColors: 3
-  objectsPerRow: 6
-  startLinesAmount: 4
   bubblePrefeb: {fileID: 1261475761344930, guid: b65b1d90090147a48994a0c0c1dc9fe8,
     type: 2}
+  dropLineIndicatorPrefeb: {fileID: 1690363164065922, guid: fb838ef9ef23fe44b98c015dd430fb59,
+    type: 2}
+  numOfColors: 3
+  objectsPerRow: 9
+  startLinesAmount: 4
 --- !u!1 &1358215063
 GameObject:
   m_ObjectHideFlags: 0

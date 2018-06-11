@@ -16,10 +16,6 @@ public class ScoreBoard : MonoBehaviour {
         this.gameObject.SetActive(false);
     }
 
-    void Update () {
-
-	}
-
     public void toggleScoreBoard()
     {
         if (this.gameObject.active) this.gameObject.SetActive(false);
@@ -29,7 +25,6 @@ public class ScoreBoard : MonoBehaviour {
         }
     }
 
- 
     public void refreshScoreBoard()
     {
         for (int i = 0; i < 10; i++)
@@ -40,18 +35,14 @@ public class ScoreBoard : MonoBehaviour {
             else scores[i].text = "";
         }
     }
-
     public void resetScoreBoard()
     {
         for (int i = 0; i < 10; i++)
         {
             PlayerPrefs.SetInt("highScore" + i.ToString(), 0);
             PlayerPrefs.SetString("highScoreName" + i.ToString(), "");
-
             names[i].text = "" ;       
-            scores[i].text = "";
-
-          
+            scores[i].text = "";          
         }
     }
 }

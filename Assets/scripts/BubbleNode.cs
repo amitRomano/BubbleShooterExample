@@ -9,7 +9,8 @@ public class BubbleNode : MonoBehaviour
 
     GameController gameController;
 
-    HexGrid grid;
+    public List<HexGrid.PosInGrid> neighborsPos;
+    private HexGrid grid;
     public bool isNextToSameColorNeighbor;
     public HexGrid.PosInGrid firstSameColorNeighbor;
     public bool isSetToPop;
@@ -23,13 +24,21 @@ public class BubbleNode : MonoBehaviour
         this.grid = grid;
         this.pos = pos;
         this.color = color;
+        setNeighborsPos();
+    }
+    public void adjustPosAfterLineDrop()
+    {
+        setPos(new HexGrid.PosInGrid(getXPos(), getYPos() + 1));        
+    }
+    public void updateGameObjectName()
+    {
+        gameObject.name = "bubble " + getPos().x + "_" + getPos().y;
     }
 
     public int getXPos()
     {
         return pos.x;
     }
-
     public int getYPos()
     {
         return pos.y;
@@ -38,7 +47,6 @@ public class BubbleNode : MonoBehaviour
     {
         return this.pos;
     }
-
     public void setPos(HexGrid.PosInGrid newPos)
     {
         this.pos = newPos;
@@ -48,75 +56,148 @@ public class BubbleNode : MonoBehaviour
         return this.color;
     }
 
-    public void updateGameObjectName()
+    public void updateSameColorAttributesForSelfAndNeighbors()
     {
-        gameObject.name = "bubble " + getPos().x + "_" + getPos().y;
+        foreach (HexGrid.PosInGrid neighbor in neighborsPos)
+        {
+            updateSameColorAttributesForSelfAndNeighbor(neighbor);
+        }
     }
-    public void adjustPosAfterLineDrop()
+    private void updateSameColorAttributesForSelfAndNeighbor(HexGrid.PosInGrid neighbor)
     {
-        setPos(new HexGrid.PosInGrid(getXPos(), getYPos() + 1));        
+        if (grid.isBubbleExist(neighbor))
+            if (isColorMatch(neighbor))
+            {
+                setFirstSameColorNeighborsIfFree(neighbor);
+                setSameColorBool(grid.getBubbleNode(neighbor));
+            }
     }
-    public void setAsLineIndicator(HexGrid grid)
+    private void setFirstSameColorNeighborsIfFree(HexGrid.PosInGrid neighbor)
     {
-        this.grid = grid;
-        isLineIndicator = true;
+            if (!grid.getBubbleNode(neighbor).isNextToSameColorNeighbor)
+                grid.getBubbleNode(neighbor).firstSameColorNeighbor = pos;
+            if (!isNextToSameColorNeighbor)
+                firstSameColorNeighbor = neighbor;
     }
-
+    private void setSameColorBool(BubbleNode neighborNode)
+    {
+        neighborNode.isNextToSameColorNeighbor = true;
+        isNextToSameColorNeighbor = true;
+    }
 
     public HexGrid.PosInGrid findSpawnPos(Vector3 shotCoords)
     {
         Vector3 angleVector = (this.transform.position - shotCoords).normalized;
-        if (isHitOnLeftSide(pos, angleVector) || isByRightWall(pos)) return findInLeftSide(angleVector);
+        if (isHitOnLeftSide(angleVector) || isByRightWall()) return findInLeftSide(angleVector);
         else return findInRightSide(angleVector);
     }
-
     private HexGrid.PosInGrid findInRightSide(Vector3 angleVector)
     {
-        if (isHitTop(angleVector) && isBelowFirstRow(pos) && !grid.isBubbleExist(grid.topRightNeighbor(pos)))
-            return grid.topRightNeighbor(pos);
-        else if (isHitMid(angleVector) && !grid.isBubbleExist(grid.midRightNeighbor(pos)))
-            return grid.midRightNeighbor(pos);
-        else return grid.botRightNeighbor(pos);
+        if (isHitTop(angleVector) && isBelowFirstRow(pos) && !grid.isBubbleExist(topRightNeighbor()))
+            return topRightNeighbor();
+        else if (isHitMid(angleVector) && !grid.isBubbleExist(midRightNeighbor()))
+            return midRightNeighbor();
+        else return botRightNeighbor();
     }
-
     private HexGrid.PosInGrid findInLeftSide(Vector3 angleVector)
     {
-        if (isHitTop(angleVector) && isBelowFirstRow(pos) && !grid.isBubbleExist(grid.topLeftNeighbor(pos)))
-            return grid.topLeftNeighbor(pos);
-        else if (isHitMid(angleVector) && !grid.isBubbleExist(grid.midLeftNeighbor(pos)))
-            return grid.midLeftNeighbor(pos);
-        else return grid.botLeftNeighbor(pos);
+        if (isHitTop(angleVector) && isBelowFirstRow(pos) && !grid.isBubbleExist(topLeftNeighbor()))
+            return topLeftNeighbor();
+        else if (isHitMid(angleVector) && !grid.isBubbleExist(midLeftNeighbor()))
+            return midLeftNeighbor();
+        else return botLeftNeighbor();
     }
-    private static bool isHitMid(Vector3 angleVector)
+    private bool isHitMid(Vector3 angleVector)
     {
         return angleVector.y <= 0.33;
     }
-
-    private static bool isHitTop(Vector3 angleVector)
+    private bool isHitTop(Vector3 angleVector)
     {
         return angleVector.y <= -0.33;
     }
-
-    private bool isHitOnLeftSide(HexGrid.PosInGrid bubbleBeenHitPos, Vector3 angleVector)
+    private bool isHitOnLeftSide(Vector3 angleVector)
     {
-        return (angleVector.x >= 0 && !isByLeftWall(bubbleBeenHitPos));
+        return (angleVector.x >= 0 && !isByLeftWall());
     }
-
-    private bool isByRightWall(HexGrid.PosInGrid bubbleBeenHitPos)
+    private bool isByRightWall()
     {
-        return grid.isLineLong(bubbleBeenHitPos.y) && bubbleBeenHitPos.x == grid.objectsPerRow - 1;
+        return grid.isLineLong(pos.y) && pos.x == grid.objectsPerRow - 1;
     }
-
-    private bool isByLeftWall(HexGrid.PosInGrid bubbleBeenHitPos)
+    private bool isByLeftWall()
     {
-        return grid.isLineLong(bubbleBeenHitPos.y) && bubbleBeenHitPos.x == 0;
+        return grid.isLineLong(pos.y) && pos.x == 0;
     }
-
     private static bool isBelowFirstRow(HexGrid.PosInGrid bubbleBeenHitPos)
     {
         return bubbleBeenHitPos.y > 0;
     }
 
+    public List<HexGrid.PosInGrid> findSameColorNeighbors()
+    {
+        List<HexGrid.PosInGrid> sameColorNeighbors = new List<HexGrid.PosInGrid>();
+            foreach (HexGrid.PosInGrid neighbor in neighborsPos)
+            {
+                if (grid.isBubbleExist(neighbor))
+                    if (isColorMatch(neighbor)) sameColorNeighbors.Add(neighbor);
+            }      
+        return sameColorNeighbors;
+    }
+    private bool isColorMatch(HexGrid.PosInGrid neighborPos)
+    {
+        return grid.colorOf(neighborPos) == color;
+    }
+
+    private void setNeighborsPos()
+    {
+        neighborsPos = new List<HexGrid.PosInGrid> (new HexGrid.PosInGrid[]{ 
+            topLeftNeighbor(), topRightNeighbor(), botLeftNeighbor(),
+                botRightNeighbor(), midLeftNeighbor(), midRightNeighbor()});
+    }
+    private List<Func<HexGrid.PosInGrid>> neighborFunctions()
+    {
+        return new List<Func<HexGrid.PosInGrid>>
+            (new Func<HexGrid.PosInGrid>[]
+            { topLeftNeighbor, topRightNeighbor, botLeftNeighbor,
+                botRightNeighbor, midLeftNeighbor, midRightNeighbor});
+    }
+    private HexGrid.PosInGrid midRightNeighbor()
+    {
+        return new HexGrid.PosInGrid(pos.x + 1, pos.y);
+    }
+    private HexGrid.PosInGrid midLeftNeighbor()
+    {
+        return new HexGrid.PosInGrid(pos.x - 1, pos.y);
+    }
+    private HexGrid.PosInGrid botRightNeighbor()
+    {
+        HexGrid.PosInGrid neighborPos = new HexGrid.PosInGrid(pos.x, pos.y - 1);
+        if (!grid.isLineLong(pos.y)) neighborPos.x++;
+        return neighborPos;
+    }
+    private HexGrid.PosInGrid botLeftNeighbor()
+    {
+        HexGrid.PosInGrid neighborPos = new HexGrid.PosInGrid(pos.x - 1, pos.y - 1);
+        if (!grid.isLineLong(pos.y)) neighborPos.x++;
+        return neighborPos;
+    }
+    private HexGrid.PosInGrid topRightNeighbor()
+    {
+        HexGrid.PosInGrid neighborPos = new HexGrid.PosInGrid(pos.x, pos.y + 1);
+        if (!grid.isLineLong(pos.y)) neighborPos.x++;
+        return neighborPos;
+    }
+    private HexGrid.PosInGrid topLeftNeighbor()
+    {
+        HexGrid.PosInGrid neighborPos = new HexGrid.PosInGrid(pos.x - 1, pos.y + 1);
+        if (!grid.isLineLong(pos.y)) neighborPos.x++;
+        return neighborPos;
+    }
+
+    public void setAsLineIndicator(HexGrid grid)
+    {
+        this.grid = grid;
+        isLineIndicator = true;
+    }
 
     private void OnTriggerEnter2D(Collider2D collision)
     {
@@ -130,7 +211,6 @@ public class BubbleNode : MonoBehaviour
         }
     
 }
-
     private void OnTriggerExit2D(Collider2D collision)
     {
         if (isLineIndicator && collision.tag == "topCollider")
@@ -139,5 +219,4 @@ public class BubbleNode : MonoBehaviour
             grid.SendMessage("resetDropGridVar");
         }
     }
-
 }

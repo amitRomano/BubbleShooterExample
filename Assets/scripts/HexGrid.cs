@@ -19,7 +19,8 @@ public class HexGrid : MonoBehaviour {
     public BubbleCannon cannon;
     public GameController gameController;
     public Sprite[] colors;
-
+    public GameObject bubblePrefeb;
+    public GameObject dropLineIndicatorPrefeb;
 
     public int numOfColors = 3;
     [Range(4, 40)]
@@ -27,33 +28,23 @@ public class HexGrid : MonoBehaviour {
 
     [Range(1, 15)]
     public int startLinesAmount;
-
     int startLinesLeft;
+    int nextNewLineY = 0;
 
+    float scale;
     float leftWallPosX;
     float yOffSet;
     float xOffSet;
-    GameObject dropLineIndicator;
 
     bool shouldGridDrop = false;
-    public static BubbleNode.Color bubbleShotColor;
 
-    int nextNewLineY = 0;
+    int poppedBubbleCounter;
     Stack explosionStack = new Stack();
     Queue connectedQueue = new Queue();
 
     HashSet<PosInGrid> bubblesToRemoveInCleanUp;
     HashSet<PosInGrid> bubblesChecked;
     Hashtable bubbleGrid = new Hashtable();
-    public GameObject bubblePrefeb;
-
-    float scale;
-    int poppedBubbleCounter;
-
-    public void initialize(BubbleCannon cannon, GameController gameController, Sprite[] colors)
-    {
-   
-    }
 
     void Start ()
     {
@@ -69,10 +60,6 @@ public class HexGrid : MonoBehaviour {
         poppedBubbleCounter = 0;
     }
 
-    private float bubbleRadius()
-    {
-        return (xOffSet / 2f);
-    }
 
     void Update ()
     {
@@ -80,20 +67,61 @@ public class HexGrid : MonoBehaviour {
         {
             popBubbleDFS((PosInGrid)explosionStack.Pop());
             poppedBubbleCounter++;
-            gameController.SendMessage("incrementScore", getScoreForBubble(poppedBubbleCounter));
+            gameController.SendMessage("incrementScore", getScoreForBubble(poppedBubbleCounter , true));
             cleanUpAfterFinalPop();
         }
 
         if (shouldGridDrop) keepDroppingGrid();
     }
 
-    private int getScoreForBubble(int poppedBubbleCounter)
+    private void addStartLines()
     {
-        if (poppedBubbleCounter < 4) return 10;
-        else return (poppedBubbleCounter - 2) * 10;            
+        addNewLine();
+        startLinesLeft--;
+    }
+    public void addNewLine()
+    {
+        createLine();
+        animateLineDrop();
+        nextNewLineY++;
+    }
+    private void createLine()
+    {
+        shouldGridDrop = true;
+        setNewDropLineIndicator();
+        for (int x = 0; x < objectsPerRow; x++)
+        {
+            createBubble(new PosInGrid(x, nextNewLineY), colorPicker(), false);
+        }
+    }
+    private void animateLineDrop()
+    {
+        gameController.isPaused = true;
+    }
+    private void keepDroppingGrid()
+    {
+        this.transform.position = Vector3.MoveTowards(this.transform.position, this.transform.position+Vector3.down, Time.deltaTime);
+    }
+    private void setNewDropLineIndicator()
+    {
+        GameObject dropLineIndicator = Instantiate(dropLineIndicatorPrefeb, getCoordsOf(new PosInGrid(0, nextNewLineY)), Quaternion.identity);
+        dropLineIndicator.transform.localScale = dropLineIndicator.transform.localScale * scale;
+        dropLineIndicator.transform.SetParent(this.transform);
+        dropLineIndicator.GetComponent<LineIndicator>().setGrid(this);
+    }
+    private void resetDropGridVar()
+    {
+        gameController.isPaused = false;
+        if (startLinesLeft > 0) addStartLines();
     }
 
-
+    private int getScoreForBubble(int poppedBubbleCounter, bool isFromExplosion)
+    {
+        if (isFromExplosion)
+            if (poppedBubbleCounter < 4) return 10;
+            else return (poppedBubbleCounter - 2) * 10;
+        else return poppedBubbleCounter * 100; //more points for hanging bubbles
+    }
     private void cleanUpAfterFinalPop()
     {
         if (isExplosionStackEmpty())
@@ -103,7 +131,7 @@ public class HexGrid : MonoBehaviour {
             if (firstRowBubbles.Count == 0)
             {
                 popAllRemainingBubbles();
-                gameController.SendMessage("incrementScore", poppedBubbleCounter * 100);
+                gameController.SendMessage("incrementScore", getScoreForBubble(poppedBubbleCounter, false));
                 poppedBubbleCounter = 0;
                 gameController.SendMessage("gameOver");
             }
@@ -130,7 +158,6 @@ public class HexGrid : MonoBehaviour {
             }
         }
     }
-
     private void popAllRemainingBubbles()
     {
         List<PosInGrid> leftOverBubbles = new List<PosInGrid>(); ;
@@ -146,15 +173,39 @@ public class HexGrid : MonoBehaviour {
         }
     }
 
-    private void initializeBubblesToRemove()
+    private bool isExplosionStackEmpty()
     {
-        bubblesToRemoveInCleanUp = new HashSet<PosInGrid>();
-        foreach (PosInGrid pos in bubbleGrid.Keys)
-        {
-            bubblesToRemoveInCleanUp.Add(pos);
-        }
+        return explosionStack.Count == 0;
     }
-
+    private void startExplosionIfNeeded(PosInGrid pos)
+    {
+        List<PosInGrid> sameColorNeighbors = getBubbleNode(pos).findSameColorNeighbors();        
+        if (sameColorNeighbors.Count >= 2)
+        {
+            startExplosion(pos);
+        }
+        else if (sameColorNeighbors.Count == 1)
+        {
+            foreach (PosInGrid neighbor in sameColorNeighbors)
+            {
+                if (bubbleBeenHitIsTouchingOtherSameColorBubble(pos, neighbor))
+                {
+                    startExplosion(pos);
+                }
+            }
+        }
+        else gameController.isLastShotPoppedBubble = false;
+    }
+    private bool bubbleBeenHitIsTouchingOtherSameColorBubble(PosInGrid pos, PosInGrid neighbor)
+    {
+        return getBubbleNode(neighbor).isNextToSameColorNeighbor &&
+                            !getBubbleNode(neighbor).firstSameColorNeighbor.Equals(pos);
+    }
+    private void startExplosion(PosInGrid pos)
+    {
+        gameController.isLastShotPoppedBubble = true;
+        explosionStack.Push(pos);
+    }
     private List<PosInGrid> findFirstRowBubbles()
     {
         List<PosInGrid> firstRowBubbles = new List<PosInGrid>();
@@ -165,12 +216,56 @@ public class HexGrid : MonoBehaviour {
         }
         return firstRowBubbles;
     }
-
     public int getFirstLineY()
     {
         return nextNewLineY - 1;
     }
+    
+    public bool isLineLong(int yOfLine)
+    {
+        return yOfLine % 2 == 0;
+    }
+    private bool isValidForPlacement(PosInGrid pos)
+    {
+        if (isLineLong(pos.y)) return pos.x >= 0 && pos.x < objectsPerRow;
+        else return pos.x >= 0 && pos.x < objectsPerRow - 1;
+    }
+    private bool isXOutOfBoundsForShortLine(int x)
+    {
+        return x == objectsPerRow - 1;
+    }
+    private void createBubbleInLongLine(PosInGrid pos, BubbleNode.Color color)
+    {
+        GameObject bubble = (GameObject)Instantiate(bubblePrefeb, getCoordsOfLongLine(pos), Quaternion.identity);
+        setBubbleAttributes(pos, bubble, color);
 
+    }
+    private void createBubbleInShortLine(PosInGrid pos, BubbleNode.Color color)
+    {
+        GameObject bubble = (GameObject)Instantiate(bubblePrefeb, getCoordsOfShortLine(pos), Quaternion.identity);
+
+        setBubbleAttributes(pos, bubble, color);
+    }
+    private float bubbleRadius()
+    {
+        return (xOffSet / 2f);
+    }
+    private Vector3 getCoordsOf(PosInGrid pos)
+    {
+        if (isLineLong(pos.y)) return getCoordsOfLongLine(pos);
+        return getCoordsOfShortLine(pos);
+    }
+    private Vector3 getCoordsOfLongLine(PosInGrid pos)
+    {
+        
+        Vector3 coordsInGrid = new Vector3(leftWallPosX + pos.x * xOffSet, pos.y * yOffSet, 0);
+        return this.transform.localPosition + coordsInGrid;
+    }
+    private Vector3 getCoordsOfShortLine(PosInGrid pos)
+    {
+        Vector3 coordsInGrid = new Vector3((leftWallPosX + pos.x * xOffSet + (xOffSet / 2)), pos.y * yOffSet, 0);
+        return this.transform.localPosition + coordsInGrid;
+    }
     public int findXforTopColliderHit(float x)
     {
         if (isLineLong(getFirstLineY()))
@@ -183,59 +278,69 @@ public class HexGrid : MonoBehaviour {
         }
     }
 
-    private bool isExplosionStackEmpty()
+    private void initializeBubblesToRemove()
     {
-        return explosionStack.Count == 0;
-    }
-
-    private void keepDroppingGrid()
-    {
-        this.transform.position = Vector3.MoveTowards(this.transform.position, this.transform.position+Vector3.down, Time.deltaTime);
-    }
-
-    private void resetDropGridVar()
-    {
-        Destroy(dropLineIndicator);
-        gameController.isPaused = false;
-        if (startLinesLeft > 0) addStartLines();
-    }
-
-
-    private void addStartLines()
-    {
-        addNewLine();
-        startLinesLeft--;
-    }
-
-    public void addNewLine()
-    {
-        createLine();
-        animateLineDrop();
-        nextNewLineY++;
-    }
-
-    private void animateLineDrop()
-    {
-        gameController.isPaused = true;
-    }
-
-    private void createLine()
-    {
-        shouldGridDrop = true;
-        setNewDropLineIndicator();
-        for (int x = 0; x < objectsPerRow; x++)
+        bubblesToRemoveInCleanUp = new HashSet<PosInGrid>();
+        foreach (PosInGrid pos in bubbleGrid.Keys)
         {
-            createBubble(new PosInGrid(x, nextNewLineY), colorPicker(), false);
+            bubblesToRemoveInCleanUp.Add(pos);
+        }
+    }
+    private void removeConnectedFromBubblesToRemoveBFS(PosInGrid firstRowBubble)
+    {
+        connectedQueue.Enqueue(firstRowBubble);
+        bubblesChecked.Add(firstRowBubble);
+        while (connectedQueue.Count > 0)
+        {
+            removeConnectedBubbles((PosInGrid)connectedQueue.Dequeue());
+        }
+    }
+    private void removeConnectedBubbles(PosInGrid pos)
+    {
+        if (isBubbleExist(pos))
+        {
+            bubblesToRemoveInCleanUp.Remove(pos);
+            foreach (PosInGrid neighbor in getBubbleNode(pos).neighborsPos)
+            {
+                if (!bubblesChecked.Contains(neighbor))
+                {
+                    bubblesChecked.Add(neighbor);
+                    connectedQueue.Enqueue(neighbor);
+                }
+            }
         }
     }
 
-    private void setNewDropLineIndicator()
+    private void popBubbleDFS(PosInGrid pos)
     {
-        dropLineIndicator = (GameObject)Instantiate(bubblePrefeb, getCoordsOf(new PosInGrid(0, nextNewLineY)), Quaternion.identity);
-        dropLineIndicator.transform.localScale = dropLineIndicator.transform.localScale * scale;
-        dropLineIndicator.GetComponent<SpriteRenderer>().sprite = null;
-        dropLineIndicator.transform.SetParent(this.transform);
-        dropLineIndicator.GetComponent<BubbleNode>().setAsLineIndicator(this);
+        if (isBubbleExist(pos))
+        {
+            BubbleNode.Color color = getBubbleNode(pos).getColor();
+            pushSameColorNeighborsToExplosionStack(pos, color);
+            popBubble(pos);
+        }
+    }
+    private void pushSameColorNeighborsToExplosionStack(PosInGrid pos, BubbleNode.Color colorPoped )
+    {
+        foreach (PosInGrid neighbor in getBubbleNode(pos).neighborsPos)
+        {
+            if (isBubbleExist(neighbor))
+                if (isColorMatch(neighbor, colorPoped) && !getBubbleNode(neighbor).isSetToPop)
+                {
+                    explosionStack.Push(neighbor);
+                    getBubbleNode(neighbor).isSetToPop = true;
+                }
+        }    
+    }
+    private void pushToExplosionStack(PosInGrid pos)
+    {
+        explosionStack.Push(pos);
+
+                       }
+    private void popBubble(PosInGrid pos)
+    {
+        Destroy(getBubble(pos));
+        bubbleGrid.Remove(pos);
     }
 
     //will not creat if pos is out of bounds or if position is taken
@@ -250,52 +355,20 @@ public class HexGrid : MonoBehaviour {
         }
         if (isFromCannon)
         {
-        List<PosInGrid> sameColorNeighbors = findSameColorNeighbors(pos);
-            gameController.isLastShotPoppedBubble = false;
-            if (sameColorNeighbors.Count >= 2)
-            {
-                gameController.isLastShotPoppedBubble = true;
-                explosionStack.Push(pos);
-            }
-            else if (sameColorNeighbors.Count == 1)
-            {
-                foreach (PosInGrid neighbor in sameColorNeighbors)
-                {if(bubbleGrid.Contains(neighbor))
-                    if (getBubbleNode(neighbor).isNextToSameColorNeighbor)
-                        if (!getBubbleNode(neighbor).firstSameColorNeighbor.Equals(pos))
-                        {
-                            gameController.isLastShotPoppedBubble = true;
-                                explosionStack.Push(pos);
-                        }
-                }
-            }
-            gameController.shotJoinedGrid();
+            startExplosionIfNeeded(pos);
+            gameController.shotHitGrid();
         }
     }
 
-    private bool isValidForPlacement(PosInGrid pos)
+    private bool isColorMatch(PosInGrid pos, BubbleNode.Color expectedColor)
     {
-        if (isLineLong(pos.y)) return pos.x >= 0 && pos.x < objectsPerRow;
-        else return pos.x >= 0 && pos.x < objectsPerRow - 1;
+        return colorOf(pos) == expectedColor;
     }
 
-    private bool isXOutOfBoundsForShortLine(int x)
+    private void setBubble(PosInGrid pos, GameObject bubble)
     {
-        return x == objectsPerRow - 1;
-    }
-
-    public bool isLineLong(int yOfLine)
-    {
-        return yOfLine % 2 == 0;
-    }
-
-    private void createBubbleInShortLine(PosInGrid pos, BubbleNode.Color color)
-    {
-        GameObject bubble = (GameObject)Instantiate(bubblePrefeb, getCoordsOfShortLine(pos), Quaternion.identity);
-
-        setBubbleAttributes(pos, bubble, color);
-    }
-
+        bubbleGrid.Add(pos, bubble);
+    }  
     private void setBubbleAttributes(PosInGrid pos, GameObject bubble, BubbleNode.Color color)
     {
         bubble.name = "bubble " + pos.x + "_" + pos.y;
@@ -303,70 +376,6 @@ public class HexGrid : MonoBehaviour {
         setBubbleColor(color, bubble); 
         insertBubbleToGrid(pos, bubble, color);
     }
-
-    public Vector3 getCoordsOf(PosInGrid pos)
-    {
-        if (isLineLong(pos.y)) return getCoordsOfLongLine(pos);
-        return getCoordsOfShortLine(pos);
-    }
-
-    private void createBubbleInLongLine(PosInGrid pos, BubbleNode.Color color)
-    {
-        GameObject bubble = (GameObject)Instantiate(bubblePrefeb, getCoordsOfLongLine(pos), Quaternion.identity);
-        setBubbleAttributes(pos, bubble, color);
-
-    }
-
-    public Vector3 getCoordsOfLongLine(PosInGrid pos)
-    {
-        
-        Vector3 coordsInGrid = new Vector3(leftWallPosX + pos.x * xOffSet, pos.y * yOffSet, 0);
-        return this.transform.localPosition + coordsInGrid;
-    }
-
-    public Vector3 getCoordsOfShortLine(PosInGrid pos)
-    {
-        Vector3 coordsInGrid = new Vector3((leftWallPosX + pos.x * xOffSet + (xOffSet / 2)), pos.y * yOffSet, 0);
-        return this.transform.localPosition + coordsInGrid;
-    }
-
-    public void insertBubbleToGrid(PosInGrid pos, GameObject bubble, BubbleNode.Color color)
-    {
-        bubbleGrid.Add(pos,bubble);
-        getBubbleNode(pos).initialize(pos, color, this, gameController);
-        updateSameColorAttributesForSelfAndNeighbors(pos);
-        
-    }
-
-    public BubbleNode.Color colorPicker()
-    {
-        int colorNum = UnityEngine.Random.Range(0, 3);
-        switch (colorNum)
-        {
-            case 0:
-                return BubbleNode.Color.BLUE;
-            case 1:
-                return BubbleNode.Color.RED;
-            default:
-                return BubbleNode.Color.YELLOW;
-        }
-    }
-    public List<PosInGrid> findSameColorNeighbors(HexGrid.PosInGrid pos)
-    {
-        List<PosInGrid> sameColorNeighbors = new List<PosInGrid>();
-        foreach (Func<HexGrid.PosInGrid, HexGrid.PosInGrid> neighborFunc in neighborFunctions())
-        {
-            if (bubbleGrid.Contains(neighborFunc(pos)))
-                if (isSameColorBubbles(pos, neighborFunc)) sameColorNeighbors.Add(neighborFunc(pos));
-        }
-        return sameColorNeighbors;
-    }
-
-    private bool isSameColorBubbles(PosInGrid pos, Func<PosInGrid, PosInGrid> neighborFunc)
-    {
-        return getBubbleNode(neighborFunc(pos)).getColor() == getBubbleNode(pos).getColor();
-    }
-
     public void setBubbleColor(BubbleNode.Color color, GameObject bubble)
     {
         switch (color)
@@ -384,101 +393,40 @@ public class HexGrid : MonoBehaviour {
                 break;
         }
     }
-
-    private void removeConnectedFromBubblesToRemoveBFS(PosInGrid firstRowBubble)
-    {
-        connectedQueue.Enqueue(firstRowBubble);
-        bubblesChecked.Add(firstRowBubble);
-        while (connectedQueue.Count > 0)
-        {
-            removeConnectedBubbles((PosInGrid)connectedQueue.Dequeue());
-        }
-    }
-
-    private void removeConnectedBubbles(PosInGrid pos)
-    {
-        if (isBubbleExist(pos))
-        {
-            bubblesToRemoveInCleanUp.Remove(pos);
-            foreach (Func<PosInGrid, PosInGrid> neighborFunc in neighborFunctions())
-            {
-                if (!bubblesChecked.Contains(neighborFunc(pos)))
-                {
-                    bubblesChecked.Add(neighborFunc(pos));
-                    connectedQueue.Enqueue(neighborFunc(pos));
-                }
-            }
-        }
-    }
-
-    public void popBubbleDFS(PosInGrid pos)
-    {
-        if (isBubbleExist(pos))
-        {
-            BubbleNode.Color color = getBubbleNode(pos).getColor();
-            popBubble(pos);
-            pushSameColorNeighborsToExplosionStack(pos, color);
-        }
-    }
-
-    public void pushSameColorNeighborsToExplosionStack(PosInGrid pos, BubbleNode.Color colorPoped )
-    {
-        foreach (Func<PosInGrid, PosInGrid> neighborFunc in neighborFunctions())
-        {
-            if (isBubbleExist(neighborFunc(pos)))
-                if (isColor(neighborFunc(pos), colorPoped))
-                {
-                    if (!getBubbleNodeFromGrid(neighborFunc(pos)).isSetToPop == true)
-                        explosionStack.Push(neighborFunc(pos));
-                        getBubbleNodeFromGrid(neighborFunc(pos)).isSetToPop = true;
-                }
-        }
-    }
-
-    void pushToExplosionStack(PosInGrid pos)
-    {
-        explosionStack.Push(pos);
-    }
-
-
-    public void popBubble(PosInGrid pos)
-    {
-        Destroy(getBubble(pos));
-        bubbleGrid.Remove(pos);
-    }
-
-    private void setBubble(PosInGrid pos, GameObject bubble)
-    {
-        bubbleGrid.Add(pos, bubble);
-    }
-
-    private GameObject getBubble(PosInGrid pos)
-    {
-        return (GameObject)bubbleGrid[pos];
-    }
-
-
-    public bool isBubbleExist(PosInGrid pos)
-    {
-        return bubbleGrid.Contains(pos);
-    }
-
-    public bool isColor(PosInGrid pos, BubbleNode.Color expectedColor)
-    {
-        return colorOf(pos) == expectedColor;
-    }
-
     public BubbleNode.Color colorOf(PosInGrid pos)
     {
         return getBubbleNode(pos).getColor();
     }
-    
-    private void updateSameColorAttributesForSelfAndNeighbors(PosInGrid pos)
+    public BubbleNode.Color colorPicker()
     {
-        foreach (Func<PosInGrid, PosInGrid> neighborFunc in neighborFunctions())
+        int colorNum = UnityEngine.Random.Range(0, 3);
+        switch (colorNum)
         {
-            updateSameColorAttributesForSelfAndNeighbor(neighborFunc, pos);
+            case 0:
+                return BubbleNode.Color.BLUE;
+            case 1:
+                return BubbleNode.Color.RED;
+            default:
+                return BubbleNode.Color.YELLOW;
         }
+    }
+    private GameObject getBubble(PosInGrid pos)
+    {
+        return (GameObject)bubbleGrid[pos];
+    }
+    public BubbleNode getBubbleNode(PosInGrid pos)
+    {
+        return getBubble(pos).GetComponent<BubbleNode>();
+    }
+    private void insertBubbleToGrid(PosInGrid pos, GameObject bubble, BubbleNode.Color color)
+    {
+        bubbleGrid.Add(pos,bubble);
+        getBubbleNode(pos).initialize(pos, color, this, gameController);
+        getBubbleNode(pos).updateSameColorAttributesForSelfAndNeighbors();      
+    }
+    public bool isBubbleExist(PosInGrid pos)
+    {
+        return bubbleGrid.Contains(pos);
     }
 
     public void resetGrid()
@@ -488,81 +436,6 @@ public class HexGrid : MonoBehaviour {
         startLinesLeft = startLinesAmount;
         addStartLines();
     }
-
-    private void updateSameColorAttributesForSelfAndNeighbor(Func<PosInGrid, PosInGrid> getNeighbor, PosInGrid pos)
-    {
-        PosInGrid neighbor = getNeighbor(pos);
-        if (isBubbleExist(neighbor))
-            if (isColor(neighbor, getBubbleNode(pos).getColor()))
-            {
-                setFirstSameColorNeighborsIfFree(getNeighbor, pos, neighbor);
-                setSameColorBool(getBubbleNode(neighbor), getBubbleNode(pos));
-            }
-    }
-
-    private void setFirstSameColorNeighborsIfFree(Func<PosInGrid, PosInGrid> getNeighbor, PosInGrid pos, PosInGrid neighbor)
-    {
-        if (!getBubbleNode(neighbor).isNextToSameColorNeighbor)
-            getBubbleNode(neighbor).firstSameColorNeighbor = pos;
-        if (!getBubbleNode(pos).isNextToSameColorNeighbor)
-            getBubbleNode(pos).firstSameColorNeighbor = getNeighbor(pos);
-    }
-
-    private void setSameColorBool(BubbleNode bubbleNode1, BubbleNode bubbleNode2)
-    {
-        bubbleNode1.isNextToSameColorNeighbor = true;
-        bubbleNode2.isNextToSameColorNeighbor = true;
-    }
-    
-    private BubbleNode getBubbleNode(PosInGrid pos)
-    {
-        return getBubble(pos).GetComponent<BubbleNode>();
-    }
-
-    public BubbleNode getBubbleNodeFromGrid(PosInGrid pos)
-    {
-        return getBubble(pos).GetComponent<BubbleNode>();
-    }
-
-    public List<Func<PosInGrid, PosInGrid>> neighborFunctions()
-    {
-        return new List<Func<PosInGrid, PosInGrid>>
-            (new Func<PosInGrid, PosInGrid>[]
-            { topLeftNeighbor, topRightNeighbor, botLeftNeighbor, botRightNeighbor, midLeftNeighbor, midRightNeighbor});
-    }
-    public PosInGrid midRightNeighbor(PosInGrid pos)
-    {
-        return new PosInGrid(pos.x + 1, pos.y);
-    }
-    public PosInGrid midLeftNeighbor(PosInGrid pos)
-    {
-        return new PosInGrid(pos.x - 1, pos.y);
-    }
-    public PosInGrid botRightNeighbor(PosInGrid pos)
-    {
-        PosInGrid neighborPos = new PosInGrid(pos.x, pos.y - 1);
-        if (!isLineLong(pos.y)) neighborPos.x++;
-        return neighborPos;
-    }
-    public PosInGrid botLeftNeighbor(PosInGrid pos)
-    {
-        PosInGrid neighborPos = new PosInGrid(pos.x - 1, pos.y - 1);
-        if (!isLineLong(pos.y)) neighborPos.x++;
-        return neighborPos;
-    }
-    public PosInGrid topRightNeighbor(PosInGrid pos)
-    {
-        PosInGrid neighborPos = new PosInGrid(pos.x, pos.y + 1);
-        if (!isLineLong(pos.y)) neighborPos.x++;
-        return neighborPos;
-    }
-    public PosInGrid topLeftNeighbor(PosInGrid pos)
-    {
-        PosInGrid neighborPos = new PosInGrid(pos.x - 1, pos.y + 1);
-        if (!isLineLong(pos.y)) neighborPos.x++;
-        return neighborPos;
-    }
-
     public void stopGridDrop()
     {
         shouldGridDrop = false;
