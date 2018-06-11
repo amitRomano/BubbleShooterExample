@@ -1,0 +1,17 @@
+fileFormatVersion: 2
+guid: 80daf5bb563a7c744a3760cda92d0d18
+timeCreated: 1527639938
+licenseType: Free
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences:
+  - cannon: {instanceID: 0}
+  - gameController: {instanceID: 0}
+  - bubblePrefeb: {fileID: 1261475761344930, guid: b65b1d90090147a48994a0c0c1dc9fe8,
+      type: 2}
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
