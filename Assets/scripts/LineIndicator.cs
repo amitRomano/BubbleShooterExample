@@ -15,7 +15,6 @@ public class LineIndicator : MonoBehaviour {
         if (collision.tag == "topCollider")
         {
             grid.SendMessage("stopGridDrop");
-            grid.SendMessage("resetDropGridVar");
             Destroy(this.gameObject);
         }
     }

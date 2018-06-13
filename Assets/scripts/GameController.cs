@@ -12,14 +12,14 @@ public class GameController : MonoBehaviour {
     public GameObject endMenu;
     public Text highScore;
     public Text score;
-    public bool isPaused;
-    public HexGrid grid;
-    public BubbleCannon bubbleCannon;
-    public static bool isBubbleMidShot;
     public GameObject nextBubbleIndicator;
     public GameObject amountOfBubblesIndicator;
+
+    public HexGrid grid;
+    public BubbleCannon bubbleCannon;
     public int amountOfBubblesUntilNextLine;
-    public bool isLastShotPoppedBubble;
+    bool isPaused;
+    bool isBubbleMidShot;
     int currentScore;
     private bool isGameOver;
 
@@ -67,7 +67,20 @@ public class GameController : MonoBehaviour {
     {
         score.text = "Score: " +newScore.ToString();
     }
-
+    
+    public void gameOver()
+    {
+        isGameOver = true;
+        endMenu.GetComponent<EndMenu>().toggleEndMenuOn(currentScore);
+    }
+    public void pauseGame()
+    {
+        isPaused = true;
+    }
+    public void unPauseGame()
+    {
+        isPaused = false;
+    }
     public void restart()
     {
         if (!isPaused || isGameOver)
@@ -91,6 +104,14 @@ public class GameController : MonoBehaviour {
         setHighestScoreIndicator(PlayerPrefs.GetInt("highScore"+0.ToString(), 0));
     }
 
+    public bool getIsBubbleMidShot()
+    {
+        return isBubbleMidShot;
+    }
+    public void setIsBubbleMidShot(bool isMidShot)
+    {
+        isBubbleMidShot = isMidShot;
+    }
     public int getCurrentScore()
     {
         return currentScore;
@@ -125,7 +146,7 @@ public class GameController : MonoBehaviour {
 
     public void shotHitGrid()
     {
-        if (!isLastShotPoppedBubble)
+        if (!grid.getIsLastShotPoppedBubble())
         {
             if (amountOfBubblesUntilNextLine > 0)
             {
@@ -141,11 +162,5 @@ public class GameController : MonoBehaviour {
         amountOfBubblesUntilNextLine = Random.Range(0, amountOfBubblesIndicatorSprites.Length);
         updateAmountOfBubblesIndicator();
         grid.GetComponent<HexGrid>().addNewLine();
-    }
-
-    public void gameOver()
-    {
-        isGameOver = true;
-        endMenu.GetComponent<EndMenu>().toggleEndMenuOn(currentScore);
     }
 }

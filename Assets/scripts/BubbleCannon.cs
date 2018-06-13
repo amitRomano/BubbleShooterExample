@@ -4,11 +4,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 public class BubbleCannon : MonoBehaviour {
-    public class messageFromCannon
-    {
-        Vector3 bubbleShotCoords;
-        HexGrid.PosInGrid bubbleBeenHitPos;
-    }
+
     public HexGrid grid;
     public Sprite[] bubbleColors;
     public Sprite[] amountOfBubblesIndicatorSprites;
@@ -40,11 +36,6 @@ public class BubbleCannon : MonoBehaviour {
     private int getAmountOfBubbles()
     {
         return gameController.GetComponent<GameController>().amountOfBubblesUntilNextLine;
-    }
-
-    private bool isPaused()
-    {
-        return gameController.GetComponent<GameController>().isPaused;
     }
 
     public void aimShot(Vector3 swipeDelta)
@@ -104,7 +95,7 @@ public class BubbleCannon : MonoBehaviour {
     }
     private void sendBubbleInDirection(Vector3 diraction)
     {
-        GameController.isBubbleMidShot = true;
+        gameController.setIsBubbleMidShot(true);
         rigidbody.velocity = diraction * speed;
     }
 
@@ -136,12 +127,11 @@ public class BubbleCannon : MonoBehaviour {
         }
     }
 
-
     private void OnTriggerEnter2D(Collider2D collision)
     {
         if (collision.tag == "bubbleInGrid")
         {
-            if (GameController.isBubbleMidShot)
+            if (gameController.getIsBubbleMidShot())
                 createBubbleAndMoveToNextShot(
                     collision.GetComponent<BubbleNode>().findSpawnPos(transform.position)
                         );
@@ -150,8 +140,6 @@ public class BubbleCannon : MonoBehaviour {
         {
             createBubbleAndMoveToNextShot(new HexGrid.PosInGrid(grid.findXforTopColliderHit(transform.position.x) ,grid.getFirstLineY()));
         }
-        GameController.isBubbleMidShot = false;
+        gameController.setIsBubbleMidShot(false);
     }
-
-
 }

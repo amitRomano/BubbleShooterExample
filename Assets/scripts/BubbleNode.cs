@@ -11,12 +11,11 @@ public class BubbleNode : MonoBehaviour
 
     public List<HexGrid.PosInGrid> neighborsPos;
     private HexGrid grid;
-    public bool isNextToSameColorNeighbor;
+    bool isNextToSameColorFlag;
     public HexGrid.PosInGrid firstSameColorNeighbor;
-    public bool isSetToPop;
+    bool isSetToPop;
     HexGrid.PosInGrid pos;
     Color color;
-    bool isLineIndicator;
 
     public void initialize(HexGrid.PosInGrid pos, Color color, HexGrid grid, GameController gameController)
     {
@@ -35,6 +34,22 @@ public class BubbleNode : MonoBehaviour
         gameObject.name = "bubble " + getPos().x + "_" + getPos().y;
     }
 
+    public bool getIsSetToPop()
+    {
+        return isSetToPop;
+    }
+    public void setToPop()
+    {
+        isSetToPop = true;
+    }
+    public bool isNextToSameColor()
+    {
+        return isNextToSameColorFlag;
+    }
+    public void setNextToSameColor()
+    {
+        isNextToSameColorFlag = true;
+    }
     public int getXPos()
     {
         return pos.x;
@@ -74,21 +89,21 @@ public class BubbleNode : MonoBehaviour
     }
     private void setFirstSameColorNeighborsIfFree(HexGrid.PosInGrid neighbor)
     {
-            if (!grid.getBubbleNode(neighbor).isNextToSameColorNeighbor)
+            if (!grid.getBubbleNode(neighbor).isNextToSameColorFlag)
                 grid.getBubbleNode(neighbor).firstSameColorNeighbor = pos;
-            if (!isNextToSameColorNeighbor)
+            if (!isNextToSameColorFlag)
                 firstSameColorNeighbor = neighbor;
     }
     private void setSameColorBool(BubbleNode neighborNode)
     {
-        neighborNode.isNextToSameColorNeighbor = true;
-        isNextToSameColorNeighbor = true;
+        neighborNode.isNextToSameColorFlag = true;
+        isNextToSameColorFlag = true;
     }
 
     public HexGrid.PosInGrid findSpawnPos(Vector3 shotCoords)
     {
         Vector3 angleVector = (this.transform.position - shotCoords).normalized;
-        if (isHitOnLeftSide(angleVector) || isByRightWall()) return findInLeftSide(angleVector);
+        if (isHitLeftSide(angleVector) || isByRightWall()) return findInLeftSide(angleVector);
         else return findInRightSide(angleVector);
     }
     private HexGrid.PosInGrid findInRightSide(Vector3 angleVector)
@@ -115,7 +130,7 @@ public class BubbleNode : MonoBehaviour
     {
         return angleVector.y <= -0.33;
     }
-    private bool isHitOnLeftSide(Vector3 angleVector)
+    private bool isHitLeftSide(Vector3 angleVector)
     {
         return (angleVector.x >= 0 && !isByLeftWall());
     }
@@ -127,7 +142,7 @@ public class BubbleNode : MonoBehaviour
     {
         return grid.isLineLong(pos.y) && pos.x == 0;
     }
-    private static bool isBelowFirstRow(HexGrid.PosInGrid bubbleBeenHitPos)
+    private bool isBelowFirstRow(HexGrid.PosInGrid bubbleBeenHitPos)
     {
         return bubbleBeenHitPos.y > 0;
     }
@@ -153,13 +168,7 @@ public class BubbleNode : MonoBehaviour
             topLeftNeighbor(), topRightNeighbor(), botLeftNeighbor(),
                 botRightNeighbor(), midLeftNeighbor(), midRightNeighbor()});
     }
-    private List<Func<HexGrid.PosInGrid>> neighborFunctions()
-    {
-        return new List<Func<HexGrid.PosInGrid>>
-            (new Func<HexGrid.PosInGrid>[]
-            { topLeftNeighbor, topRightNeighbor, botLeftNeighbor,
-                botRightNeighbor, midLeftNeighbor, midRightNeighbor});
-    }
+
     private HexGrid.PosInGrid midRightNeighbor()
     {
         return new HexGrid.PosInGrid(pos.x + 1, pos.y);
@@ -193,12 +202,6 @@ public class BubbleNode : MonoBehaviour
         return neighborPos;
     }
 
-    public void setAsLineIndicator(HexGrid grid)
-    {
-        this.grid = grid;
-        isLineIndicator = true;
-    }
-
     private void OnTriggerEnter2D(Collider2D collision)
     {
         if (collision.tag == "bubbleShot")
@@ -211,12 +214,5 @@ public class BubbleNode : MonoBehaviour
         }
     
 }
-    private void OnTriggerExit2D(Collider2D collision)
-    {
-        if (isLineIndicator && collision.tag == "topCollider")
-        {
-            grid.SendMessage("stopGridDrop");
-            grid.SendMessage("resetDropGridVar");
-        }
-    }
+
 }
